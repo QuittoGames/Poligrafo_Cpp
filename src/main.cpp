@@ -27,12 +27,12 @@ void loop()
 {
     int gsr = analogRead(SENSOR_PIN);
     int pot = analogRead(POT_PIN);
-    if (gsr > pot + band)
+    if (gsr > pot + SENSI)
     {
         setColor(RED);
         beep();
     }
-    else if (gsr < pot - band)
+    else if (gsr < pot - SENSI)
     {
         setColor(BLUE);
     }
