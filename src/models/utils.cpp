@@ -12,7 +12,7 @@ void utils::setColor(long rgb) const
 {
     // unit8 = inteiro sem sinal de 8 bits.
     // static_cast = traformação de de tipos em C++ moderno 
-    const uint8_t red = static_cast<uint8_t>((rgb >> 16) & 0xFF);
+    const uint8_t red = static_cast<uint8_t>((rgb >> 16) & 0xFF); //desloca o valor RGB para que o canal vermelho fique nos últimos 8 bits e usa uma máscara para extrair apenas esse byte
     const uint8_t green = static_cast<uint8_t>((rgb >> 8) & 0xFF);
     const uint8_t blue = static_cast<uint8_t>(rgb & 0xFF);
 
