@@ -12,13 +12,23 @@ struct Config
     
     static constexpr int POT_PIN = 1;
     static constexpr int SENSOR_PIN = 0;
+
+    // Serial
+    static constexpr unsigned long SERIAL_BAUD = 9600;
     
     // Cores (0xRRGGBB)
-    static constexpr long RED = 0xFF0000;
-    static constexpr long GREEN = 0x00FF00;
-    static constexpr long BLUE = 0x000080;
+    static constexpr int RED = 1;
+    static constexpr int GREEN = 2;
+    static constexpr int BLUE = 3;
     
     // Ajuste da sensibilidade
-    static constexpr int SENSI = 50;
+    static constexpr int SENSI = 10;
+
+    // GSR: calibração/filtragem/estabilização
+    static constexpr int CALIBRATION_SAMPLES = 300;
+    static constexpr int CALIBRATION_DELAY_MS = 10;
+    static constexpr int READ_SAMPLES = 10;
+    static constexpr int READ_DELAY_MS = 5;
+    static constexpr unsigned long WARMUP_MS = 5000;
 };
 

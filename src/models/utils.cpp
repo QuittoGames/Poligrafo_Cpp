@@ -1,4 +1,6 @@
 #include "../interfaces/utils.h"
+#include "../interfaces/Config.h"
+
 
 utils::utils(int redPin, int greenPin, int bluePin, int buzzerPin)
     : redPin_(redPin),
@@ -8,17 +10,20 @@ utils::utils(int redPin, int greenPin, int bluePin, int buzzerPin)
 {
 }
 
-void utils::setColor(long rgb) const
+void utils::setColor(long color) const
 {
-    // unit8 = inteiro sem sinal de 8 bits.
-    // static_cast = traformação de de tipos em C++ moderno 
-    const uint8_t red = static_cast<uint8_t>((rgb >> 16) & 0xFF); //desloca o valor RGB para que o canal vermelho fique nos últimos 8 bits e usa uma máscara para extrair apenas esse byte
-    const uint8_t green = static_cast<uint8_t>((rgb >> 8) & 0xFF);
-    const uint8_t blue = static_cast<uint8_t>(rgb & 0xFF);
+    digitalWrite(redPin_, LOW);
+    digitalWrite(greenPin_, LOW);
+    digitalWrite(bluePin_, LOW);
 
-    analogWrite(redPin_, red);
-    analogWrite(greenPin_, green);
-    analogWrite(bluePin_, blue);
+    if (color == Config::RED)
+        digitalWrite(redPin_, HIGH);
+
+    else if (color == Config::GREEN)
+        digitalWrite(greenPin_, HIGH);
+
+    else if (color == Config::BLUE)
+        digitalWrite(bluePin_, HIGH);
 }
 
 void utils::beep(unsigned int cycles, unsigned int halfPeriodMicros) const
