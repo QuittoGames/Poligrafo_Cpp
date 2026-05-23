@@ -16,7 +16,12 @@ void setup()
     Serial.begin(Config::SERIAL_BAUD);
 
     util.setColor(Config::GREEN);
-    Serial.println("[INFO] Calibrando baseline do GSR...");
+    Serial.println();
+    Serial.println(":: POLIGRAFO ::");
+    Serial.println("Inicializando interface GSR...");
+    Serial.println("Mantenha os dedos no sensor...");
+    Serial.println("Calibrando baseline...");
+    Serial.println();
     delay(3000); // estabiliza antes de calibrar
     util.calibrateBaseline();
 
