@@ -1,6 +1,6 @@
 from dataclasses import dataclass,field
 from datetime import date
-from src.model.Sensor_State import Sensor_State
+from src.api.model.Sensor_State import Sensor_State
 
 @dataclass
 class Log:

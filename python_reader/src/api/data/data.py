@@ -12,4 +12,4 @@ class Data:
         "utils"
     ])
 
-    Debug:bool = False
+    Debug:bool = True

@@ -1,7 +1,7 @@
 import serial
 import re
-from src.utils.logger import Logger
-from src.model.Sensor_State import Sensor_State
+from src.api.utils.logger import Logger
+from src.api.model.Sensor_State import Sensor_State
 
 class ReaderService:
     def __init__(self, port="COM3", baud=9600):

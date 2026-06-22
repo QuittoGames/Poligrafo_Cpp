@@ -1,15 +1,17 @@
 window.addEventListener("DOMContentLoaded", () => {
+
     const API_URL = "http://localhost:8001/api/state";
     const MAX_POINTS = 80;
 
-    function safe(v ) {
+    function safe(v) {
         const n = Number(v);
         return Number.isFinite(n) ? n : 0;
     }
 
     const canvas = document.getElementById("liveChart");
+
     if (!canvas) {
-        console.error("❌ Erro: Canvas 'liveChart' não encontrado.");
+        console.error("Canvas não encontrada.");
         return;
     }
 
@@ -22,54 +24,96 @@ window.addEventListener("DOMContentLoaded", () => {
     const chart = new Chart(ctx, {
         type: "line",
         data: {
-            labels: labels,
+            labels,
             datasets: [
                 {
                     label: "GSR",
-                    borderColor: "#3b82f6",
-                    backgroundColor: "rgba(59, 130, 246, 0.1)",
                     data: gsrHistory,
+                    borderColor: "#10b981",
+                    backgroundColor: "rgba(16,185,129,.15)",
                     pointRadius: 0,
-                    tension: 0.4,
+                    tension: 0.35,
                     fill: true
                 },
                 {
                     label: "Baseline",
-                    borderColor: "#64748b",
                     data: baselineHistory,
+                    borderColor: "#64748b",
                     pointRadius: 0,
-                    tension: 0.4
+                    tension: 0.35
                 }
             ]
         },
+
         options: {
             responsive: true,
             maintainAspectRatio: false,
             animation: false,
-            plugins: { legend: { labels: { color: "#fff" } } },
+
+            plugins: {
+                legend: {
+                    labels: {
+                        color: "#ffffff"
+                    }
+                }
+            },
+
             scales: {
-                x: { display: false },
+                x: {
+                    display: false
+                },
+
                 y: {
-                    ticks: { color: "#aaa" },
-                    grid: { color: "rgba(255,255,255,0.1)" }
+                    ticks: {
+                        color: "#94a3b8"
+                    },
+
+                    grid: {
+                        color: "rgba(255,255,255,.08)"
+                    }
                 }
             }
         }
     });
 
+    function updateText(id, value) {
+        const el = document.getElementById(id);
+
+        if (el)
+            el.innerText = value.toFixed(2);
+    }
+
+    let updating = false;
+
     async function update() {
+
+        if (updating)
+            return;
+
+        updating = true;
+
         try {
-            const res = await fetch(API_URL);
-            if (!res.ok) throw new Error(`Status: ${res.status}`);
+
+            const res = await fetch(API_URL, {
+                cache: "no-store"
+            });
+
+            if (!res.ok)
+                throw new Error(`HTTP ${res.status}`);
 
             const data = await res.json();
-            // Log para debug (aperte F12 no navegador para ver)
-            console.log("Dados recebidos:", data);
 
-            if (!data) return;
+            if (!Array.isArray(data) || data.length === 0)
+                return;
 
-            const last = Array.isArray(data) ? data[data.length - 1] : data;
-            if (!last) return;
+            const last = data.at(-1);
+
+            if (!last)
+                return;
+
+            //---------------------------------------
+            // DADOS
+            //---------------------------------------
 
             const gsrVal = safe(last.gsr);
             const baseVal = safe(last.baseline);
@@ -77,39 +121,139 @@ window.addEventListener("DOMContentLoaded", () => {
 
             gsrHistory.push(gsrVal);
             baselineHistory.push(baseVal);
-            labels.push(""); 
+            labels.push("");
 
-            if (gsrHistory.length > MAX_POINTS) {
+            while (gsrHistory.length > MAX_POINTS) {
                 gsrHistory.shift();
                 baselineHistory.shift();
                 labels.shift();
             }
 
-            chart.update("none");
-
-            const updateText = (id, val) => {
-                const el = document.getElementById(id);
-                if (el) el.innerText = val.toFixed(2);
-            };
-
             updateText("val-gsr", gsrVal);
             updateText("val-baseline", baseVal);
             updateText("val-diff", diffVal);
 
-            const statusBox = document.getElementById("status-box");
-            const statusLabel = document.getElementById("status-label");
+            //---------------------------------------
+            // ESTADOS
+            //---------------------------------------
 
-            if (statusBox && statusLabel) {
-                const state = last.state || "ESTAVEL";
-                statusBox.className = `status-box state-${state}`;
-                statusLabel.innerText = state;
+            const state = (last.state || "ESTAVEL").toUpperCase();
+
+            let color = "#10b981";
+            let background = "rgba(16,185,129,.15)";
+            let stateText = "ESTÁVEL";
+
+            switch (state) {
+
+                case "LEVE":
+                case "ALTERACAO":
+                case "LEVE_ALTERACAO":
+
+                    color = "#facc15";
+                    background = "rgba(250,204,21,.15)";
+                    stateText = "LEVE ALTERAÇÃO";
+
+                    break;
+
+                case "PICO":
+                case "ALERT":
+
+                    color = "#ef4444";
+                    background = "rgba(239,68,68,.15)";
+                    stateText = "PICO";
+
+                    break;
+
+                default:
+
+                    color = "#10b981";
+                    background = "rgba(16,185,129,.15)";
+                    stateText = "ESTÁVEL";
             }
 
-        } catch (e) {
-            console.warn("⚠️ Falha na conexão com a API. Verifique se o backend está rodando.", e);
+            //---------------------------------------
+            // GRAFICO
+            //---------------------------------------
+
+            chart.data.datasets[0].borderColor = color;
+            chart.data.datasets[0].backgroundColor = background;
+
+            chart.update("none");
+
+            //---------------------------------------
+            // HEADER
+            //---------------------------------------
+
+            const statusBox = document.getElementById("status-box");
+            const statusLabel = document.getElementById("status-label");
+            const led = document.querySelector(".led");
+
+            if (statusBox && statusLabel && led) {
+
+                statusBox.style.borderColor = color;
+                statusBox.style.background = background;
+                statusBox.style.boxShadow = `0 0 15px ${background}`;
+
+                statusLabel.innerText = stateText;
+                statusLabel.style.color = color;
+
+                led.style.backgroundColor = color;
+                led.style.boxShadow = `0 0 15px ${color}`;
+
+                if (state === "PICO" || state === "ALERT") {
+                    led.style.animation = "pulse .8s infinite";
+                } else {
+                    led.style.animation = "";
+                }
+            }
+
+            //---------------------------------------
+            // TEXTO GRANDE
+            //---------------------------------------
+
+            const stateInfo = document.getElementById("state-text");
+
+            if (stateInfo) {
+                stateInfo.innerText = stateText;
+                stateInfo.style.color = color;
+                stateInfo.style.textShadow = `0 0 10px ${color}`;
+            }
+
+            //---------------------------------------
+            // CARDS
+            //---------------------------------------
+
+            document.querySelectorAll(".card").forEach(card => {
+
+                card.style.borderColor = color;
+                card.style.boxShadow = `0 0 10px ${background}`;
+            });
+
         }
+        catch (e) {
+
+            console.warn("Falha na API", e);
+
+        }
+        finally {
+
+            updating = false;
+
+        }
+
     }
 
-    update();
-    setInterval(update, 800);
+    //---------------------------------------
+    // LOOP
+    //---------------------------------------
+
+    async function loop() {
+
+        await update();
+
+        setTimeout(loop, 800);
+    }
+
+    loop();
+
 });

@@ -1,5 +1,5 @@
-from src.model.Log import Log
-from src.core.deps.deps import get_data
+from src.api.model.Log import Log
+from src.api.data.core.deps.deps import get_data
 import json
 
 class LogService:

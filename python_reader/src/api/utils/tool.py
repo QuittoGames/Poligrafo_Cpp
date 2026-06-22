@@ -2,7 +2,7 @@ import os
 import platform
 from dataclasses import dataclass
 import subprocess
-from src.data.data import Data
+from src.api.data.data import Data
 import sys
 
 @dataclass

@@ -1,8 +1,8 @@
 import asyncio
-from src.services.ReaderService import ReaderService
-from src.core.container import data_local
+from src.api.Services.ReaderService import ReaderService
+from src.api.data.core.deps.deps import get_data
 import random
-from src.utils.logger import Logger
+from src.api.utils.logger import Logger
 
 class Worker:
     @staticmethod
@@ -28,10 +28,10 @@ class Worker:
                     "state": "TEST"
                 }
 
-                data_local.latest_state.append(fake_value)
+                get_data().latest_state.append(fake_value)
 
-                if len(data_local.latest_state) > 100:
-                    data_local.latest_state.pop(0)
+                if len(get_data().latest_state) > 100:
+                    get_data().latest_state.pop(0)
 
                 Logger.logger.debug(f"GSR={gsr:.3f}")
 
@@ -46,10 +46,10 @@ class Worker:
             while True:
                 value = reader.read()
                 if value:
-                    data_local.latest_state.append(value)
+                    get_data().latest_state.append(value)
 
-                if len(data_local.latest_state) > 100:
-                    data_local.latest_state.pop(0)
+                if len(get_data().latest_state) > 100:
+                    get_data().latest_state.pop(0)
 
                 await asyncio.sleep(1)
         except RuntimeError as RE:
