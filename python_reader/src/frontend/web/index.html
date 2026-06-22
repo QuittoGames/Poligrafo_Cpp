@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polígrafos Graph Services</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="app-container">
+    <header>
+        <h1>POLÍGRAFO <span>//LIVE</span></h1>
+        <div class="status-box" id="status-box">
+            <div class="led"></div>
+            <span id="status-label">Aguardando...</span>
+        </div>
+    </header>
+    <section class="kpi-grid">
+        <div class="card">
+            <span class="card-title">GSR</span>
+            <h2 id="val-gsr">0</h2>
+        </div>
+        <div class="card">
+            <span class="card-title">Baseline</span>
+            <h2 id="val-baseline">0</h2>
+        </div>
+        <div class="card">
+            <span class="card-title">Diff</span>
+            <h2 id="val-diff">0</h2>
+        </div>
+    </section>
+    <section class="graph-wrapper">
+        <canvas id="liveChart"></canvas>
+    </section>
+</div>
+<script src="/static/js/js.js"></script>
+</body>
+</html>
