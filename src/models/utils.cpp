@@ -10,8 +10,7 @@ utils::utils(int redPin, int greenPin, int yellowPin, int buzzerPin)
 {
 }
 
-void utils::setColor(long color) const
-{
+void utils::setColor(long color) const{
     digitalWrite(redPin_, LOW);
     digitalWrite(greenPin_, LOW);
     digitalWrite(yellowPin_, LOW);
@@ -26,10 +25,8 @@ void utils::setColor(long color) const
         digitalWrite(yellowPin_, HIGH);
 }
 
-void utils::beep(unsigned int cycles, unsigned int halfPeriodMicros) const
-{
-    for (unsigned int i = 0; i < cycles; i++)
-    {
+void utils::beep(unsigned int cycles, unsigned int halfPeriodMicros) const{
+    for (unsigned int i = 0; i < cycles; i++){
         digitalWrite(buzzerPin_, HIGH);
         delayMicroseconds(halfPeriodMicros);
         digitalWrite(buzzerPin_, LOW);
@@ -37,12 +34,10 @@ void utils::beep(unsigned int cycles, unsigned int halfPeriodMicros) const
     }
 }
 
-double utils::readGsrFiltered() const
-{
+double utils::readGsrFiltered() const{
     long sum = 0;
 
-    for (int i = 0; i < Config::READ_SAMPLES; i++)
-    {
+    for (int i = 0; i < Config::READ_SAMPLES; i++){
         sum += analogRead(Config::SENSOR_PIN);
         delay(Config::READ_DELAY_MS);
     }
@@ -50,12 +45,10 @@ double utils::readGsrFiltered() const
     return static_cast<double>(sum) / static_cast<double>(Config::READ_SAMPLES);
 }
 
-void utils::calibrateBaseline()
-{
+void utils::calibrateBaseline(){
     long sum = 0;
 
-    for (int i = 0; i < Config::CALIBRATION_SAMPLES; i++)
-    {
+    for (int i = 0; i < Config::CALIBRATION_SAMPLES; i++){
         sum += analogRead(Config::SENSOR_PIN);
         delay(Config::CALIBRATION_DELAY_MS);
     }
@@ -63,7 +56,6 @@ void utils::calibrateBaseline()
     baseline_ = static_cast<double>(sum) / static_cast<double>(Config::CALIBRATION_SAMPLES);
 }
 
-double utils::getBaseline() const
-{
+double utils::getBaseline() const{
     return baseline_;
 }
