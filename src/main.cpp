@@ -3,11 +3,11 @@
 
 #include "interfaces/utils.h"
 #include "interfaces/Config.h"
+#include "enum/State.hpp"
 
 utils util(Config::RED_PIN, Config::GREEN_PIN, Config::YELLOW_PIN, Config::BUZZER_PIN);
 
-void setup()
-{
+void setup(){
     pinMode(Config::RED_PIN, OUTPUT);
     pinMode(Config::GREEN_PIN, OUTPUT);
     pinMode(Config::YELLOW_PIN, OUTPUT);
@@ -31,24 +31,18 @@ void setup()
 }
 
 
-void loop()
-{    
+void loop(){
     const double gsr = util.readGsrFiltered();
-
-    Serial.print("[INFO] GSR: ");
-    Serial.print(gsr);
-    Serial.print(" BASELINE: ");
-    Serial.println(util.getBaseline(), 2);
 
     const double diff = fabs(gsr - util.getBaseline());
 
-    Serial.print("DIFF: ");
-    Serial.println(diff, 2);
+    State state = State::NONE;
 
     if (diff > 200.0) {
-        util.setColor(Config::GREEN);
+        util.setColor(Config::RED);
         util.beep(120, 500U);
-        Serial.println("State: SEM CONTATO");
+        state = State::NOT_CONNECTED;
+
         delay(1000);
         return;
     }
@@ -56,20 +50,31 @@ void loop()
     if (diff > Config::SENSI)
     {
         util.setColor(Config::RED);
-        util.beep(250, 500U);
-        Serial.println("[ALERT] State: PICO DETECTADO");
+        util.beep(200, 500U);
+        state = State::PICO_DETECTADO;
     }
     else if (diff > Config::SENSI / 2.5)
     {
         util.setColor(Config::YELLOW);
-        util.beep(160, 500U);
-        Serial.println("[WARN] State: VARIACAO LEVE");
+        state = State::VARIACAO_LEVE;
     }
     else
     {
         util.setColor(Config::GREEN);
-        Serial.println("[OK] State: ESTAVEL");
+        state = State::ESTAVEL;
     }
 
-    delay(1000);
+    Serial.print("---------------------------------------");
+    Serial.print("[DATA] ");
+    Serial.print("GSR=");
+    Serial.print(gsr, 2);
+    Serial.print(" | BASELINE=");
+    Serial.print(util.getBaseline(), 2);
+    Serial.print(" | DIFF=");
+    Serial.print(diff, 2);
+    Serial.print(" | STATE=");
+    const State* finalstate = &state;
+    Serial.println(stateToString(finalstate));
+
+    delay(1200);
 }
