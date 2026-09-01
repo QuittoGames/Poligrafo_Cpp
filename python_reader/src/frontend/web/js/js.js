@@ -1,12 +1,46 @@
+/* =============================================================================
+   Polígrafo — live dashboard
+   Rules:
+     1. Data updates every poll tick (cheap, always).
+     2. Color/DOM updates ONLY on state transition (tracked, deduped).
+     3. All non-chart visuals driven by [data-state] on .app-container —
+        no inline style mutations.
+   ============================================================================= */
+
 window.addEventListener("DOMContentLoaded", () => {
 
+    //---------------------------------------
+    // CONSTANTS
+    //---------------------------------------
+
     const API_URL = "http://localhost:8001/api/state";
+    const POLL_INTERVAL_MS = 800;
     const MAX_POINTS = 80;
 
-    function safe(v) {
-        const n = Number(v);
-        return Number.isFinite(n) ? n : 0;
-    }
+    // Neutral palette (state-independent).
+    const BASELINE_COLOR = "#64748b";
+
+    // State palette. Mirrors style.css [data-state] tokens — keep in sync.
+    const STATE_STYLE = {
+        ESTAVEL:         { color: "#10b981", background: "rgba(16,185,129,.15)",  text: "ESTÁVEL" },
+        NONE:            { color: "#10b981", background: "rgba(16,185,129,.15)",  text: "ESTÁVEL" },
+        VARIACAO_LEVE:   { color: "#facc15", background: "rgba(250,204,21,.15)",  text: "LEVE ALTERAÇÃO" },
+        LEVE:            { color: "#facc15", background: "rgba(250,204,21,.15)",  text: "LEVE ALTERAÇÃO" },
+        ALTERACAO:       { color: "#facc15", background: "rgba(250,204,21,.15)",  text: "LEVE ALTERAÇÃO" },
+        LEVE_ALTERACAO:  { color: "#facc15", background: "rgba(250,204,21,.15)",  text: "LEVE ALTERAÇÃO" },
+        PICO_DETECTADO:  { color: "#ef4444", background: "rgba(239,68,68,.15)",   text: "PICO" },
+        PICO:            { color: "#ef4444", background: "rgba(239,68,68,.15)",   text: "PICO" },
+        ALERT:           { color: "#ef4444", background: "rgba(239,68,68,.15)",   text: "PICO" },
+        NOT_CONNECTED:   { color: "#ef4444", background: "rgba(239,68,68,.15)",   text: "SEM CONTATO" },
+        NO_CONTACT:      { color: "#ef4444", background: "rgba(239,68,68,.15)",   text: "SEM CONTATO" },
+        SEM_CONTATO:     { color: "#ef4444", background: "rgba(239,68,68,.15)",   text: "SEM CONTATO" }
+    };
+
+    const DEFAULT_STYLE = STATE_STYLE.ESTAVEL;
+
+    //---------------------------------------
+    // DOM
+    //---------------------------------------
 
     const canvas = document.getElementById("liveChart");
 
@@ -16,10 +50,17 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 
     const ctx = canvas.getContext("2d");
+    const appContainer = document.querySelector(".app-container");
+    const statusLabel = document.getElementById("status-label");
+    const stateText = document.getElementById("state-text");
 
     const gsrHistory = [];
     const baselineHistory = [];
     const labels = [];
+
+    //---------------------------------------
+    // CHART
+    //---------------------------------------
 
     const chart = new Chart(ctx, {
         type: "line",
@@ -29,8 +70,8 @@ window.addEventListener("DOMContentLoaded", () => {
                 {
                     label: "GSR",
                     data: gsrHistory,
-                    borderColor: "#10b981",
-                    backgroundColor: "rgba(16,185,129,.15)",
+                    borderColor: DEFAULT_STYLE.color,
+                    backgroundColor: DEFAULT_STYLE.background,
                     pointRadius: 0,
                     tension: 0.35,
                     fill: true
@@ -38,7 +79,7 @@ window.addEventListener("DOMContentLoaded", () => {
                 {
                     label: "Baseline",
                     data: baselineHistory,
-                    borderColor: "#64748b",
+                    borderColor: BASELINE_COLOR,
                     pointRadius: 0,
                     tension: 0.35
                 }
@@ -76,12 +117,82 @@ window.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    //---------------------------------------
+    // STATE TRANSITION (the ONLY path that mutates visuals)
+    //---------------------------------------
+
+    let currentState = null;
+    let currentChartColor = null;
+
+    function applyStateVisuals(stateRaw) {
+
+        const state = (stateRaw || "ESTAVEL").toUpperCase();
+
+        // Deduplicate: nothing changes unless the state actually transitioned.
+        if (state === currentState) return;
+
+        currentState = state;
+        const cfg = STATE_STYLE[state] || DEFAULT_STYLE;
+
+        // 1. DOM state — drives ALL CSS ([data-state] tokens in style.css).
+        if (appContainer) appContainer.dataset.state = state;
+
+        // 2. Text labels (only fire on transition).
+        if (statusLabel) statusLabel.textContent = cfg.text;
+        if (stateText) stateText.textContent = cfg.text;
+
+        // 3. Chart color — Chart.js needs JS mutation; gate on color diff
+        //    so equal-palette transitions (PICO -> ALERT) don't redraw.
+        if (cfg.color !== currentChartColor) {
+            chart.data.datasets[0].borderColor = cfg.color;
+            chart.data.datasets[0].backgroundColor = cfg.background;
+            currentChartColor = cfg.color;
+            chart.update("none");
+        }
+    }
+
+    //---------------------------------------
+    // DATA (every tick — no visual mutation)
+    //---------------------------------------
+
+    function safe(v) {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : 0;
+    }
+
     function updateText(id, value) {
         const el = document.getElementById(id);
 
         if (el)
             el.innerText = value.toFixed(2);
     }
+
+    function pushData(last) {
+
+        const gsrVal = safe(last.gsr);
+        const baseVal = safe(last.baseline);
+        const diffVal = safe(last.diff);
+
+        gsrHistory.push(gsrVal);
+        baselineHistory.push(baseVal);
+        labels.push("");
+
+        while (gsrHistory.length > MAX_POINTS) {
+            gsrHistory.shift();
+            baselineHistory.shift();
+            labels.shift();
+        }
+
+        updateText("val-gsr", gsrVal);
+        updateText("val-baseline", baseVal);
+        updateText("val-diff", diffVal);
+
+        chart.update("none");
+    }
+
+    //---------------------------------------
+    // POLL LOOP
+    //---------------------------------------
 
     let updating = false;
 
@@ -112,122 +223,16 @@ window.addEventListener("DOMContentLoaded", () => {
                 return;
 
             //---------------------------------------
-            // DADOS
+            // DATA: every tick, cheap, no color touch
             //---------------------------------------
 
-            const gsrVal = safe(last.gsr);
-            const baseVal = safe(last.baseline);
-            const diffVal = safe(last.diff);
-
-            gsrHistory.push(gsrVal);
-            baselineHistory.push(baseVal);
-            labels.push("");
-
-            while (gsrHistory.length > MAX_POINTS) {
-                gsrHistory.shift();
-                baselineHistory.shift();
-                labels.shift();
-            }
-
-            updateText("val-gsr", gsrVal);
-            updateText("val-baseline", baseVal);
-            updateText("val-diff", diffVal);
+            pushData(last);
 
             //---------------------------------------
-            // ESTADOS
+            // STATE: only mutates visuals on change
             //---------------------------------------
 
-            const state = (last.state || "ESTAVEL").toUpperCase();
-
-            let color = "#10b981";
-            let background = "rgba(16,185,129,.15)";
-            let stateText = "ESTÁVEL";
-
-            switch (state) {
-
-                case "LEVE":
-                case "ALTERACAO":
-                case "LEVE_ALTERACAO":
-
-                    color = "#facc15";
-                    background = "rgba(250,204,21,.15)";
-                    stateText = "LEVE ALTERAÇÃO";
-
-                    break;
-
-                case "PICO":
-                case "ALERT":
-
-                    color = "#ef4444";
-                    background = "rgba(239,68,68,.15)";
-                    stateText = "PICO";
-
-                    break;
-
-                default:
-
-                    color = "#10b981";
-                    background = "rgba(16,185,129,.15)";
-                    stateText = "ESTÁVEL";
-            }
-
-            //---------------------------------------
-            // GRAFICO
-            //---------------------------------------
-
-            chart.data.datasets[0].borderColor = color;
-            chart.data.datasets[0].backgroundColor = background;
-
-            chart.update("none");
-
-            //---------------------------------------
-            // HEADER
-            //---------------------------------------
-
-            const statusBox = document.getElementById("status-box");
-            const statusLabel = document.getElementById("status-label");
-            const led = document.querySelector(".led");
-
-            if (statusBox && statusLabel && led) {
-
-                statusBox.style.borderColor = color;
-                statusBox.style.background = background;
-                statusBox.style.boxShadow = `0 0 15px ${background}`;
-
-                statusLabel.innerText = stateText;
-                statusLabel.style.color = color;
-
-                led.style.backgroundColor = color;
-                led.style.boxShadow = `0 0 15px ${color}`;
-
-                if (state === "PICO" || state === "ALERT") {
-                    led.style.animation = "pulse .8s infinite";
-                } else {
-                    led.style.animation = "";
-                }
-            }
-
-            //---------------------------------------
-            // TEXTO GRANDE
-            //---------------------------------------
-
-            const stateInfo = document.getElementById("state-text");
-
-            if (stateInfo) {
-                stateInfo.innerText = stateText;
-                stateInfo.style.color = color;
-                stateInfo.style.textShadow = `0 0 10px ${color}`;
-            }
-
-            //---------------------------------------
-            // CARDS
-            //---------------------------------------
-
-            document.querySelectorAll(".card").forEach(card => {
-
-                card.style.borderColor = color;
-                card.style.boxShadow = `0 0 10px ${background}`;
-            });
+            applyStateVisuals(last.state);
 
         }
         catch (e) {
@@ -243,15 +248,11 @@ window.addEventListener("DOMContentLoaded", () => {
 
     }
 
-    //---------------------------------------
-    // LOOP
-    //---------------------------------------
-
     async function loop() {
 
         await update();
 
-        setTimeout(loop, 800);
+        setTimeout(loop, POLL_INTERVAL_MS);
     }
 
     loop();
