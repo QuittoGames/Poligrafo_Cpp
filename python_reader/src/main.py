@@ -12,6 +12,9 @@ from src.api.utils.logger import Logger
 from fastapi.staticfiles import StaticFiles
 
 
+# Configure root logging (colors, format, level) before anything logs.
+Logger.setup()
+
 app = FastAPI()
 
 app.add_middleware(
@@ -24,6 +27,7 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="src/frontend/web"), name="static")
 app.include_router(sensor_router)
 app.include_router(route_home)
+
 
 # =========================
 # STARTUP
